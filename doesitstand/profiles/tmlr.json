@@ -1,0 +1,31 @@
+{
+  "venue": "TMLR",
+  "description": "Transactions on Machine Learning Research — venue-specific policy signals",
+  "signals": [
+    {
+      "id": "code_url",
+      "name": "Code repository URL (github/gitlab/zenodo — not just 'available upon request')",
+      "regex": "github\\.com|gitlab\\.com|zenodo\\.org|osf\\.io|figshare\\.com"
+    },
+    {
+      "id": "author_email",
+      "name": "Author email address (required for non-anonymous TMLR submission)",
+      "regex": "@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+    },
+    {
+      "id": "limitations_section",
+      "name": "Dedicated limitations or threats-to-validity section (strongly recommended by TMLR)",
+      "regex": "\\\\section\\{.*[Ll]imitation|\\\\section\\{.*[Tt]hreats"
+    },
+    {
+      "id": "ai_tools_disclosure",
+      "name": "Generative AI / LLM tools disclosure (TMLR editorial policy)",
+      "regex": "generative.ai|ai.assisted|ai tools|llm.assisted|chatgpt|copilot|claude|gemini"
+    },
+    {
+      "id": "reproducibility_artifact",
+      "name": "Reproducibility: seed, environment, or Docker specification",
+      "regex": "seed|random seed|environment\\.yml|requirements\\.txt|docker|conda"
+    }
+  ]
+}

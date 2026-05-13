@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agenda.v1",
+  "type": "object",
+  "required": ["generated_at", "sources", "clusters"],
+  "properties": {
+    "generated_at": {"type": "string"},
+    "sources": {"type": "array", "items": {"type": "string"}},
+    "clusters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cluster_id", "label", "hypotheses"],
+        "properties": {
+          "cluster_id": {"type": "string"},
+          "label": {"type": "string"},
+          "hypotheses": {"type": "array"}
+        }
+      }
+    },
+    "program_summary": {"type": "string"},
+    "research_questions": {"type": "array", "items": {"type": "string"}}
+  }
+}

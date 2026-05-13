@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "dossier.v1",
+  "type": "object",
+  "required": ["paper_path", "title", "summary", "method", "results", "claims", "related_works"],
+  "properties": {
+    "paper_path": {"type": "string"},
+    "title": {"type": "string"},
+    "summary": {"type": "string"},
+    "method": {"type": "string"},
+    "results": {"type": "array", "items": {"type": "string"}},
+    "claims": {"type": "array", "items": {"type": "string"}},
+    "keywords": {"type": "array", "items": {"type": "string"}},
+    "related_works": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "arxiv_id": {"type": "string"},
+          "title": {"type": "string"},
+          "relation": {"type": "string"}
+        }
+      }
+    }
+  }
+}

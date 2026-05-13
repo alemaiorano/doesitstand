@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Tooling/cache
+.cache/
+.ruff_cache/
+.claude/
+
+# Local env
+.env
+
+# Generated outputs and experiments
+output_*/
+test_runs/
+swe_agent_research_output/
+swe_grounded_output/
+
+# Local artifacts
+2026-03-25-124244-faca-uma-analise-da-proposta-de-paper-review-que-t.txt
+swe_agent_research_dossier.json
+swe_agent_research_grounded_evidence.json
+
+# Windows alternate stream artifacts
+*:Zone.Identifier

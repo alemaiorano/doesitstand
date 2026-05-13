@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "evidence.v1",
+  "type": "object",
+  "required": ["paper_path", "processed_at", "extraction", "grounding", "reviews", "meta_review"],
+  "properties": {
+    "paper_path": {"type": "string"},
+    "processed_at": {"type": "string"},
+    "prompt_version": {"type": "string"},
+    "seed": {"type": "integer"},
+    "extraction": {
+      "type": "object",
+      "required": ["is_academic_paper", "title", "summary", "keywords", "claims", "search_queries"],
+      "properties": {
+        "is_academic_paper": {"type": "boolean"},
+        "title": {"type": "string"},
+        "summary": {"type": "string"},
+        "keywords": {"type": "array", "items": {"type": "string"}},
+        "claims": {"type": "array", "items": {"type": "string"}},
+        "acknowledged_limitations": {"type": "array", "items": {"type": "string"}},
+        "search_queries": {"type": "array"}
+      }
+    },
+    "grounding": {"type": "object"},
+    "reviews": {
+      "type": "object",
+      "required": ["reviewer_a", "reviewer_b", "reviewer_c"]
+    },
+    "meta_review": {
+      "type": "object",
+      "required": ["final_decision", "final_confidence", "final_scores", "final_review_markdown"]
+    },
+    "reviewer_agreement": {"type": "object"},
+    "cost": {"type": "object"},
+    "score_confidence_intervals": {"type": "object"}
+  }
+}

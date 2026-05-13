@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doesitstand"
+version = "0.2.0"
+description = "Does your paper stand? Submit any paper. Get expert-level peer review."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "google-genai>=1.0.0",
+    "pypdf>=4.0.0",
+    "requests>=2.31.0",
+    "click>=8.1.0",
+    "jsonschema>=4.21.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0.1",
+]
+
+[project.scripts]
+doesitstand = "doesitstand.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/your-org/doesitstand"
+Documentation = "https://github.com/your-org/doesitstand#readme"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["doesitstand*"]

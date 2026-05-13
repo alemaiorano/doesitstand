@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "portfolio.v1",
+  "type": "object",
+  "required": ["generated_at", "keep", "review", "drop"],
+  "properties": {
+    "generated_at": {"type": "string"},
+    "keep": {"type": "array"},
+    "review": {"type": "array"},
+    "drop": {"type": "array"}
+  }
+}
