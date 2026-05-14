@@ -128,11 +128,16 @@ doesitstand integrity paper.pdf --evidence evidence.json --outdir ./output
 ```
 
 **Checks:**
-- Reference resolution (ArXiv, DOI)
+- Reference resolution (OpenAlex by arXiv DOI, with ArXiv API fallback)
 - Hallucination detection (are cited papers real?)
 - Claim verification (do claims match the evidence?)
 
 **Output:** `reference_check_report.json`, `hallucination_report.json`, `claim_verification_report.json`
+
+**Reference resolution behavior:**
+- Tries OpenAlex first (`10.48550/arXiv.<id>`) to reduce dependency on ArXiv API throttling.
+- Falls back to ArXiv API when OpenAlex has no result or fails.
+- Uses provider-specific caches under `outdir/.cache/openalex` and `outdir/.cache/arxiv`.
 
 ---
 
@@ -209,6 +214,7 @@ The review pipeline includes several robustness features:
 - **LLM retry with exponential backoff** — transient API errors (429 rate limits, 500 server errors, timeouts) are retried up to 3 times with delays of 2s → 4s → 8s. Non-retryable errors (malformed output) fail immediately.
 - **Error isolation gate** — if any reviewer fails after retries, its output is flagged as an error. The meta-reviewer receives the `reviewer_errors` list and `final_confidence` is capped at 3/5, preventing overconfident assessments when reviewer perspectives are missing.
 - **Cost tracking** — every LLM call is instrumented with token counts and estimated USD cost. The `cost` field in `evidence.json` breaks down usage per pipeline stage (extraction, reviewer_a/b/c, meta_review).
+- **Cross-process ArXiv throttling** — ArXiv lookups use a file lock and shared timestamp gate to keep requests near `1 req / 5s` across concurrent local processes.
 
 ## Project Structure
 
@@ -227,7 +233,9 @@ doesitstand/
 ├── science_prompts.py
 ├── screen_prompts.py
 ├── agenda_prompts.py
-├── arxiv_client.py     # ArXiv API client
+├── arxiv_client.py     # ArXiv API client + cross-process rate limiting
+├── openalex_client.py  # OpenAlex resolver by arXiv DOI
+├── reference_resolver.py # OpenAlex -> ArXiv fallback resolver
 ├── contracts/          # JSON schemas
 │   └── __init__.py
 ├── profiles/           # Venue-specific policy signal profiles
