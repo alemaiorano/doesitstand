@@ -10,7 +10,7 @@ from typing import Any
 
 from doesitstand.arxiv_client import search_cached
 from doesitstand.contracts import validate_artifact
-from doesitstand.llm_client import llm_json_flash, llm_json_pro_with_retry, get_cost_report, reset_cost_tracker
+from doesitstand.llm_client import llm_json_flash_with_retry, llm_json_pro_with_retry, get_cost_report, reset_cost_tracker
 from doesitstand.openalex_client import search_by_query_cached
 from doesitstand.pdf_extract import (
     extract_pdf_text, get_head_excerpt, get_sandwich_excerpt,
@@ -76,7 +76,7 @@ def run_extraction(
     prompt = get_prompt("extraction", version)
     head_text = get_head_excerpt(text)
     user = prompt["user"].format(head_text=head_text, venue=venue)
-    result = llm_json_flash(prompt["system"], user, seed=seed)
+    result = llm_json_flash_with_retry(prompt["system"], user, seed=seed, stage="extraction")
     return result
 
 

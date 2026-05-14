@@ -225,3 +225,15 @@ def llm_json_pro_with_retry(
         system_prompt, user_prompt,
         model=GEMINI_MODEL, stage=stage, **kwargs,
     )
+
+
+def llm_json_flash_with_retry(
+    system_prompt: str,
+    user_prompt: str,
+    stage: str = "",
+    **kwargs,
+) -> dict[str, Any]:
+    return llm_json_with_retry(
+        system_prompt, user_prompt,
+        model=GEMINI_MODEL_FLASH, stage=stage, **kwargs,
+    )
