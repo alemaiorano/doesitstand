@@ -258,6 +258,23 @@ def e2e(
     outdir_path.mkdir(parents=True, exist_ok=True)
     results: dict = {}
 
+    # Stage 0: Guard (LaTeX structural + policy checks, optional)
+    if paper_dir:
+        click.echo("→ Running guard checks...", err=True)
+        from doesitstand.guard import run_guard
+        guard_result = run_guard(
+            paper_dir=paper_dir,
+            policy_profile=policy_profile,
+            outdir=str(outdir_path),
+        )
+        results["guard_report"] = str(outdir_path / "guard_report.json")
+        if guard_result.exit_code != 0:
+            click.echo(
+                f"  ⚠ Guard found issues (exit_code={guard_result.exit_code}). "
+                "See guard_report.json.",
+                err=True,
+            )
+
     # Stage 1: Review
     click.echo("→ Running review pipeline...", err=True)
     review_path, evidence_path = run_review(
@@ -288,23 +305,6 @@ def e2e(
         results["hypotheses"] = str(s_paths[1])
         results["ranked"] = str(s_paths[2])
         results["test_plan"] = str(s_paths[3])
-
-    # Stage 0: Guard (LaTeX structural + policy checks, optional)
-    if paper_dir:
-        click.echo("→ Running guard checks...", err=True)
-        from doesitstand.guard import run_guard
-        guard_result = run_guard(
-            paper_dir=paper_dir,
-            policy_profile=policy_profile,
-            outdir=str(outdir_path),
-        )
-        results["guard_report"] = str(outdir_path / "guard_report.json")
-        if guard_result.exit_code != 0:
-            click.echo(
-                f"  ⚠ Guard found issues (exit_code={guard_result.exit_code}). "
-                "See guard_report.json.",
-                err=True,
-            )
 
     # Stage 4: Agenda + Screening (multi-paper)
     if runs_dirs:

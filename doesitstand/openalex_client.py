@@ -2,6 +2,7 @@
 import json
 import hashlib
 import logging
+import os
 import re
 import time
 from pathlib import Path
@@ -13,6 +14,12 @@ from doesitstand.arxiv_client import ArxivEntry
 from doesitstand.env import ARXIV_USER_AGENT
 
 logger = logging.getLogger(__name__)
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content)
+    os.replace(tmp, path)
 
 
 def _reconstruct_abstract(inv: dict | None) -> str:
@@ -116,13 +123,16 @@ def fetch_by_arxiv_id_cached(
     cache_file = cache_path / f"{key}.json"
 
     if not no_cache and cache_file.exists():
-        data = json.loads(cache_file.read_text())
-        if data is None:
-            return None
-        return ArxivEntry(**data)
+        try:
+            data = json.loads(cache_file.read_text())
+            if data is None:
+                return None
+            return ArxivEntry(**data)
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            logger.warning("Ignoring corrupted OpenAlex cache file %s: %s", cache_file, exc)
 
     result = fetch_by_arxiv_id(arxiv_id, timeout_s=timeout_s, max_retries=max_retries)
-    cache_file.write_text(json.dumps(result.to_dict() if result else None, indent=2))
+    _atomic_write_text(cache_file, json.dumps(result.to_dict() if result else None, indent=2))
     return result
 
 
@@ -178,8 +188,11 @@ def search_by_query_cached(
     cache_file = cache_path / f"{key}.json"
 
     if not no_cache and cache_file.exists():
-        data = json.loads(cache_file.read_text())
-        return [ArxivEntry(**e) for e in data]
+        try:
+            data = json.loads(cache_file.read_text())
+            return [ArxivEntry(**e) for e in data]
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            logger.warning("Ignoring corrupted OpenAlex search cache %s: %s", cache_file, exc)
 
     results = search_by_query(
         query=query,
@@ -187,5 +200,5 @@ def search_by_query_cached(
         timeout_s=timeout_s,
         max_retries=max_retries,
     )
-    cache_file.write_text(json.dumps([e.to_dict() for e in results], indent=2))
+    _atomic_write_text(cache_file, json.dumps([e.to_dict() for e in results], indent=2))
     return results

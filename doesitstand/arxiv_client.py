@@ -3,6 +3,7 @@ import fcntl
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 import xml.etree.ElementTree as ET
@@ -18,6 +19,12 @@ logger = logging.getLogger(__name__)
 
 ATOM_NS = "http://www.w3.org/2005/Atom"
 ARXIV_NS = "http://arxiv.org/schemas/atom"
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content)
+    os.replace(tmp, path)
 
 
 @dataclass
@@ -212,8 +219,11 @@ def search_cached(
     cache_file = cache_path / f"{key}.json"
 
     if not no_cache and cache_file.exists():
-        data = json.loads(cache_file.read_text())
-        return [ArxivEntry(**e) for e in data]
+        try:
+            data = json.loads(cache_file.read_text())
+            return [ArxivEntry(**e) for e in data]
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            logger.warning("Ignoring corrupted ArXiv cache file %s: %s", cache_file, exc)
 
     results = search(
         query,
@@ -225,5 +235,5 @@ def search_cached(
         max_retries=max_retries,
         cache_dir=str(cache_path),
     )
-    cache_file.write_text(json.dumps([e.to_dict() for e in results], indent=2))
+    _atomic_write_text(cache_file, json.dumps([e.to_dict() for e in results], indent=2))
     return results
