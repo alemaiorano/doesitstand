@@ -110,6 +110,7 @@ _REVIEWER_SECTIONS = {
     "reviewer_b": [  # Experiments & Reproducibility
         re.compile(r"\b(5|setup|experiment|configuration)\b", re.I),
         re.compile(r"\b(6|result|evaluation|analysis)\b", re.I),
+        re.compile(r"\b(appendix|supplementary|supplement)\b", re.I),
     ],
     "reviewer_c": [  # Clarity & Impact
         re.compile(r"\b(1|introduction|intro)\b", re.I),
@@ -123,7 +124,7 @@ def get_reviewer_text(
     sections: dict[str, str],
     full_text: str,
     reviewer_key: str,
-    budget: int = 8000,
+    budget: int = 12000,
 ) -> str:
     """Build reviewer-specific text from section-aware extraction.
 
