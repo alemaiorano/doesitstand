@@ -60,6 +60,24 @@ def _extract_arxiv_id(url: str) -> str:
 import re
 
 
+def _enforce_rate_limit(cache_dir: Path, min_interval_s: float = 3.0):
+    """File-based rate limiter for ArXiv API (~1 req/3s).
+
+    Uses a timestamp file so multiple processes on the same machine
+    coordinate automatically.
+    """
+    stamp_file = Path(cache_dir) / ".last_request"
+    stamp_file.parent.mkdir(parents=True, exist_ok=True)
+    if stamp_file.exists():
+        try:
+            elapsed = time.time() - float(stamp_file.read_text().strip())
+            if elapsed < min_interval_s:
+                time.sleep(min_interval_s - elapsed)
+        except (ValueError, OSError):
+            pass
+    stamp_file.write_text(str(time.time()))
+
+
 def search(
     query: str,
     start: int = 0,
@@ -68,7 +86,11 @@ def search(
     sort_order: Optional[str] = None,
     timeout_s: int = 30,
     max_retries: int = 3,
+    cache_dir: str | Path | None = None,
 ) -> list[ArxivEntry]:
+    if cache_dir is not None:
+        _enforce_rate_limit(cache_dir)
+
     params: dict = {
         "search_query": f"all:{query}",
         "start": start,
@@ -189,6 +211,6 @@ def search_cached(
         data = json.loads(cache_file.read_text())
         return [ArxivEntry(**e) for e in data]
 
-    results = search(query, start, max_results, sort_by, sort_order)
+    results = search(query, start, max_results, sort_by, sort_order, cache_dir=str(cache_path))
     cache_file.write_text(json.dumps([e.to_dict() for e in results], indent=2))
     return results

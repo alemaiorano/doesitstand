@@ -3,7 +3,6 @@
 import json
 import logging
 import re
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
@@ -90,13 +89,10 @@ def run_arxiv_grounding(
     search_queries = extraction.get("search_queries", [])
     queries_run = []
 
-    for i, sq in enumerate(search_queries):
+    for sq in search_queries:
         query_str = sq.get("query", "")
         if not query_str:
             continue
-        # ArXiv recommends max 1 request per 3 seconds
-        if i > 0:
-            time.sleep(3)
         try:
             results = search_cached(
                 query_str,
