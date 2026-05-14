@@ -64,6 +64,11 @@ _SECTION_HEADER_RE = re.compile(
     re.MULTILINE,
 )
 _APPENDIX_RE = re.compile(r"\n(Appendix\s+[A-Z])\b", re.MULTILINE)
+# Letter-prefixed appendix headers: "A Title", "B Title", etc. (common in LaTeX papers)
+_LETTER_APPENDIX_RE = re.compile(
+    r"\n([A-Z])\s+([A-Z][^\n]{2,80})",
+    re.MULTILINE,
+)
 _REFERENCES_RE = re.compile(r"\n(References)\s*\n", re.MULTILINE)
 
 
@@ -72,7 +77,8 @@ def extract_sections(text: str) -> dict[str, str]:
 
     Returns a dict mapping section labels (e.g. "1 Introduction") to their
     body text. Sections are detected by numbered headers (``1 Introduction``),
-    ``Appendix X`` markers, and a ``References`` marker.
+    ``Appendix X`` markers, letter-prefixed appendix headers (``A Title``),
+    and a ``References`` marker.
     """
     sections: dict[str, str] = {}
     # Collect all split points
@@ -84,6 +90,21 @@ def extract_sections(text: str) -> dict[str, str]:
 
     for m in _APPENDIX_RE.finditer(text):
         splits.append((m.start(), m.group(1).strip()))
+
+    # Find the References section position to filter letter-prefixed headers
+    refs_pos = len(text)
+    for m in _REFERENCES_RE.finditer(text):
+        refs_pos = min(refs_pos, m.start())
+
+    # Letter-prefixed appendix headers only after References (avoids false positives)
+    for m in _LETTER_APPENDIX_RE.finditer(text):
+        if m.start() > refs_pos:
+            title = m.group(2).strip()
+            # Skip reference entries: "Author. Title, journal" pattern
+            if re.search(r"\.\s+[A-Z]", title[:60]):
+                continue
+            label = f"{m.group(1)} {title}"
+            splits.append((m.start(), label))
 
     for m in _REFERENCES_RE.finditer(text):
         splits.append((m.start(), m.group(1).strip()))
