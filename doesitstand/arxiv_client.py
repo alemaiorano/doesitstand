@@ -2,6 +2,7 @@
 import hashlib
 import json
 import logging
+import re
 import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
@@ -55,9 +56,6 @@ def _extract_arxiv_id(url: str) -> str:
     if re.search(r"v\d+$", part):
         part = re.sub(r"v\d+$", "", part)
     return part
-
-
-import re
 
 
 def _enforce_rate_limit(cache_dir: Path, min_interval_s: float = 3.0):

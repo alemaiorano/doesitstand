@@ -10,7 +10,7 @@ from typing import Any
 
 from doesitstand.arxiv_client import search_cached
 from doesitstand.contracts import validate_artifact
-from doesitstand.llm_client import llm_json_flash, llm_json_pro, get_cost_report, reset_cost_tracker
+from doesitstand.llm_client import llm_json_flash, llm_json_pro_with_retry, get_cost_report, reset_cost_tracker
 from doesitstand.pdf_extract import (
     extract_pdf_text, get_head_excerpt, get_sandwich_excerpt,
     extract_sections, get_reviewer_text,
@@ -152,7 +152,7 @@ def _run_single_reviewer(
         grounding=json.dumps(grounding),
         head_text=head_text,
     )
-    result = llm_json_pro(prompt["system"], user, seed=seed)
+    result = llm_json_pro_with_retry(prompt["system"], user, seed=seed, stage=reviewer_key)
     return reviewer_key, result
 
 
@@ -248,7 +248,7 @@ def run_meta_review(
             extraction=extraction_str,
             grounding=grounding_str,
         )
-        meta_write = llm_json_pro(write_prompt["system"], write_user, seed=seed)
+        meta_write = llm_json_pro_with_retry(write_prompt["system"], write_user, seed=seed, stage="meta_write")
 
         # Step 2: assign scores
         score_prompt = get_prompt("meta_score", version)
@@ -261,7 +261,7 @@ def run_meta_review(
             review_b=review_b,
             review_c=review_c,
         )
-        meta_score = llm_json_pro(score_prompt["system"], score_user, seed=seed)
+        meta_score = llm_json_pro_with_retry(score_prompt["system"], score_user, seed=seed, stage="meta_score")
 
         # Cap confidence when reviewer perspectives are missing
         final_confidence = meta_score.get("final_confidence", 3)
@@ -292,7 +292,7 @@ def run_meta_review(
             extraction=extraction_str,
             grounding=grounding_str,
         )
-        result = llm_json_pro(combined_prompt["system"], combined_user, seed=seed)
+        result = llm_json_pro_with_retry(combined_prompt["system"], combined_user, seed=seed, stage="meta_combined")
         # Cap confidence on combined path too
         if reviewer_errors:
             confidence = result.get("final_confidence", 3)
