@@ -5,8 +5,8 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from doesitstand.arxiv_client import search_cached
 from doesitstand.contracts import validate_artifact
+from doesitstand.reference_resolver import resolve_arxiv_id
 from doesitstand.pdf_extract import extract_pdf_text
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ def run_reference_check(
 ) -> Path:
     outdir = Path(outdir).resolve()
     outdir.mkdir(parents=True, exist_ok=True)
-    cache_dir = outdir / ".cache" / "arxiv"
+    cache_dir = outdir / ".cache"
 
     text = extract_pdf_text(pdf_path)
     refs_text = _extract_references_section(text)
@@ -70,18 +70,17 @@ def run_reference_check(
 
         if arxiv_id:
             try:
-                results = search_cached(
+                result = resolve_arxiv_id(
                     arxiv_id,
-                    max_results=1,
                     cache_dir=cache_dir,
                     no_cache=no_cache,
                 )
-                if results:
-                    metadata = results[0].to_dict()
+                if result:
+                    metadata = result.to_dict()
                     resolved = True
                     resolved_count += 1
             except Exception as exc:
-                logger.warning("ArXiv resolve failed for %r: %s", arxiv_id, exc)
+                logger.warning("Reference resolution failed for %r: %s", arxiv_id, exc)
         elif doi:
             resolved = True  # DOI found but not further resolved here
             resolved_count += 1

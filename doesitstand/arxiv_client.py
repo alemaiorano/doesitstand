@@ -1,4 +1,5 @@
 """Python port of marketing-simulator/apps/api/src/services/arxiv.ts"""
+import fcntl
 import hashlib
 import json
 import logging
@@ -58,22 +59,25 @@ def _extract_arxiv_id(url: str) -> str:
     return part
 
 
-def _enforce_rate_limit(cache_dir: Path, min_interval_s: float = 3.0):
-    """File-based rate limiter for ArXiv API (~1 req/3s).
-
-    Uses a timestamp file so multiple processes on the same machine
-    coordinate automatically.
-    """
+def _enforce_rate_limit(cache_dir: Path, min_interval_s: float = 5.0):
+    """File-based rate limiter for ArXiv API (~1 req/5s) with cross-process locking."""
     stamp_file = Path(cache_dir) / ".last_request"
     stamp_file.parent.mkdir(parents=True, exist_ok=True)
-    if stamp_file.exists():
+    lock_file = stamp_file.with_suffix(".lock")
+
+    with open(lock_file, "w") as lock_fd:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
         try:
-            elapsed = time.time() - float(stamp_file.read_text().strip())
-            if elapsed < min_interval_s:
-                time.sleep(min_interval_s - elapsed)
-        except (ValueError, OSError):
-            pass
-    stamp_file.write_text(str(time.time()))
+            if stamp_file.exists():
+                try:
+                    elapsed = time.time() - float(stamp_file.read_text().strip())
+                    if elapsed < min_interval_s:
+                        time.sleep(min_interval_s - elapsed)
+                except (ValueError, OSError):
+                    pass
+            stamp_file.write_text(str(time.time()))
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
 
 
 def search(
