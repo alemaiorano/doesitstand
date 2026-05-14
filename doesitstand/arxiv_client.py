@@ -200,6 +200,8 @@ def search_cached(
     sort_order: Optional[str] = None,
     cache_dir: str | Path = ".cache/arxiv",
     no_cache: bool = False,
+    timeout_s: int = 30,
+    max_retries: int = 3,
 ) -> list[ArxivEntry]:
     cache_path = Path(cache_dir)
     cache_path.mkdir(parents=True, exist_ok=True)
@@ -213,6 +215,15 @@ def search_cached(
         data = json.loads(cache_file.read_text())
         return [ArxivEntry(**e) for e in data]
 
-    results = search(query, start, max_results, sort_by, sort_order, cache_dir=str(cache_path))
+    results = search(
+        query,
+        start,
+        max_results,
+        sort_by,
+        sort_order,
+        timeout_s=timeout_s,
+        max_retries=max_retries,
+        cache_dir=str(cache_path),
+    )
     cache_file.write_text(json.dumps([e.to_dict() for e in results], indent=2))
     return results

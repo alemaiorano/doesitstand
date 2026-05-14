@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 # Max arxiv results per query
 _ARXIV_MAX_RESULTS = 10
+_ARXIV_GROUNDING_TIMEOUT_S = 12
+_ARXIV_GROUNDING_MAX_RETRIES = 1
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +101,8 @@ def run_arxiv_grounding(
                 max_results=max_results,
                 cache_dir=cache_dir,
                 no_cache=no_cache,
+                timeout_s=_ARXIV_GROUNDING_TIMEOUT_S,
+                max_retries=_ARXIV_GROUNDING_MAX_RETRIES,
             )
             queries_run.append(
                 {
