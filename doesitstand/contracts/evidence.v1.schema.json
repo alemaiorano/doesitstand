@@ -18,7 +18,18 @@
         "keywords": {"type": "array", "items": {"type": "string"}},
         "claims": {"type": "array", "items": {"type": "string"}},
         "acknowledged_limitations": {"type": "array", "items": {"type": "string"}},
-        "search_queries": {"type": "array"}
+        "search_queries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["query", "category", "rationale"],
+            "properties": {
+              "query": {"type": "string", "minLength": 1},
+              "category": {"type": "string", "minLength": 1},
+              "rationale": {"type": "string", "minLength": 1}
+            }
+          }
+        }
       }
     },
     "grounding": {"type": "object"},

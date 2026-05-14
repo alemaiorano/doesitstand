@@ -46,6 +46,7 @@ Run full peer review on a PDF paper.
 ```bash
 doesitstand review paper.pdf --outdir ./output
 doesitstand review paper.pdf --venue ICLR --seed 42
+doesitstand review paper.pdf --grounding-arxiv-timeout 8 --grounding-openalex-timeout 8
 ```
 
 **Output:**
@@ -138,6 +139,12 @@ doesitstand integrity paper.pdf --evidence evidence.json --outdir ./output
 - Tries OpenAlex first (`10.48550/arXiv.<id>`) to reduce dependency on ArXiv API throttling.
 - Falls back to ArXiv API when OpenAlex has no result or fails.
 - Uses provider-specific caches under `outdir/.cache/openalex` and `outdir/.cache/arxiv`.
+
+**Grounding behavior (review stage):**
+- Primary source: ArXiv query API.
+- Fallback source: OpenAlex query search when ArXiv fails (timeout/rate limit).
+- Each query record in `evidence.json.grounding.queries_run` includes `source` (`arxiv`, `openalex_fallback`, or `none`).
+- Tuning knobs: `--grounding-max-results`, `--grounding-arxiv-timeout`, `--grounding-arxiv-retries`, `--grounding-openalex-timeout`, `--grounding-openalex-retries`.
 
 ---
 

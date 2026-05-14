@@ -35,13 +35,40 @@ def main():
     help="Random seed for reproducibility",
 )
 @click.option("--no-cache", is_flag=True, help="Bypass ArXiv cache")
-def review(pdf_path, outdir, venue, version, seed, no_cache):
+@click.option("--grounding-max-results", default=10, type=int, show_default=True)
+@click.option("--grounding-arxiv-timeout", default=12, type=int, show_default=True)
+@click.option("--grounding-arxiv-retries", default=1, type=int, show_default=True)
+@click.option("--grounding-openalex-timeout", default=12, type=int, show_default=True)
+@click.option("--grounding-openalex-retries", default=1, type=int, show_default=True)
+def review(
+    pdf_path,
+    outdir,
+    venue,
+    version,
+    seed,
+    no_cache,
+    grounding_max_results,
+    grounding_arxiv_timeout,
+    grounding_arxiv_retries,
+    grounding_openalex_timeout,
+    grounding_openalex_retries,
+):
     """Run the full review pipeline for a single PDF."""
     from doesitstand.review_pipeline import run_review
 
     Path(outdir).mkdir(parents=True, exist_ok=True)
     review_path, evidence_path = run_review(
-        pdf_path, outdir, venue, version, seed, no_cache
+        pdf_path,
+        outdir,
+        venue,
+        version,
+        seed,
+        no_cache,
+        grounding_max_results=grounding_max_results,
+        grounding_arxiv_timeout_s=grounding_arxiv_timeout,
+        grounding_arxiv_max_retries=grounding_arxiv_retries,
+        grounding_openalex_timeout_s=grounding_openalex_timeout,
+        grounding_openalex_max_retries=grounding_openalex_retries,
     )
     click.echo(
         json.dumps(
@@ -231,6 +258,11 @@ def ref_check(bib_path, tex_paths, outdir):
     type=click.Path(exists=True),
     help="JSON venue policy profile for guard (e.g. profiles/tmlr.json)",
 )
+@click.option("--grounding-max-results", default=10, type=int, show_default=True)
+@click.option("--grounding-arxiv-timeout", default=12, type=int, show_default=True)
+@click.option("--grounding-arxiv-retries", default=1, type=int, show_default=True)
+@click.option("--grounding-openalex-timeout", default=12, type=int, show_default=True)
+@click.option("--grounding-openalex-retries", default=1, type=int, show_default=True)
 def e2e(
     pdf_path,
     outdir,
@@ -244,6 +276,11 @@ def e2e(
     max_claims,
     paper_dir,
     policy_profile,
+    grounding_max_results,
+    grounding_arxiv_timeout,
+    grounding_arxiv_retries,
+    grounding_openalex_timeout,
+    grounding_openalex_retries,
 ):
     """End-to-end pipeline: review → integrity → science → (optional) agenda + screen."""
     from doesitstand.review_pipeline import run_review
@@ -278,7 +315,17 @@ def e2e(
     # Stage 1: Review
     click.echo("→ Running review pipeline...", err=True)
     review_path, evidence_path = run_review(
-        pdf_path, str(outdir_path), venue, version, seed, no_cache
+        pdf_path,
+        str(outdir_path),
+        venue,
+        version,
+        seed,
+        no_cache,
+        grounding_max_results=grounding_max_results,
+        grounding_arxiv_timeout_s=grounding_arxiv_timeout,
+        grounding_arxiv_max_retries=grounding_arxiv_retries,
+        grounding_openalex_timeout_s=grounding_openalex_timeout,
+        grounding_openalex_max_retries=grounding_openalex_retries,
     )
     results["review_md"] = str(review_path)
     results["evidence_json"] = str(evidence_path)

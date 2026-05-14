@@ -90,6 +90,10 @@ def run_arxiv_grounding(
     cache_dir: str | Path = ".cache/arxiv",
     no_cache: bool = False,
     max_results: int = _ARXIV_MAX_RESULTS,
+    arxiv_timeout_s: int = _ARXIV_GROUNDING_TIMEOUT_S,
+    arxiv_max_retries: int = _ARXIV_GROUNDING_MAX_RETRIES,
+    openalex_timeout_s: int = _OPENALEX_GROUNDING_TIMEOUT_S,
+    openalex_max_retries: int = _OPENALEX_GROUNDING_MAX_RETRIES,
 ) -> dict[str, Any]:
     search_queries = extraction.get("search_queries", [])
     queries_run = []
@@ -104,8 +108,8 @@ def run_arxiv_grounding(
                 max_results=max_results,
                 cache_dir=cache_dir,
                 no_cache=no_cache,
-                timeout_s=_ARXIV_GROUNDING_TIMEOUT_S,
-                max_retries=_ARXIV_GROUNDING_MAX_RETRIES,
+                timeout_s=arxiv_timeout_s,
+                max_retries=arxiv_max_retries,
             )
             queries_run.append(
                 {
@@ -113,6 +117,7 @@ def run_arxiv_grounding(
                     "category": sq.get("category", ""),
                     "rationale": sq.get("rationale", ""),
                     "results": [r.to_dict() for r in results],
+                    "source": "arxiv",
                 }
             )
             logger.debug("ArXiv query %r → %d results", query_str, len(results))
@@ -122,8 +127,8 @@ def run_arxiv_grounding(
                 oa_results = search_by_query_cached(
                     query=query_str,
                     max_results=max_results,
-                    timeout_s=_OPENALEX_GROUNDING_TIMEOUT_S,
-                    max_retries=_OPENALEX_GROUNDING_MAX_RETRIES,
+                    timeout_s=openalex_timeout_s,
+                    max_retries=openalex_max_retries,
                     cache_dir=Path(cache_dir).parent / "openalex_search",
                     no_cache=no_cache,
                 )
@@ -143,6 +148,7 @@ def run_arxiv_grounding(
                         "query": query_str,
                         "category": sq.get("category", ""),
                         "results": [],
+                        "source": "none",
                         "error": f"arxiv_failed: {exc}; openalex_failed: {oa_exc}",
                     }
                 )
@@ -344,6 +350,11 @@ def run_review(
     version: str = "v3",
     seed: int = 42,
     no_cache: bool = False,
+    grounding_max_results: int = _ARXIV_MAX_RESULTS,
+    grounding_arxiv_timeout_s: int = _ARXIV_GROUNDING_TIMEOUT_S,
+    grounding_arxiv_max_retries: int = _ARXIV_GROUNDING_MAX_RETRIES,
+    grounding_openalex_timeout_s: int = _OPENALEX_GROUNDING_TIMEOUT_S,
+    grounding_openalex_max_retries: int = _OPENALEX_GROUNDING_MAX_RETRIES,
 ) -> tuple[Path, Path]:
     outdir = Path(outdir).resolve()
     outdir.mkdir(parents=True, exist_ok=True)
@@ -364,11 +375,44 @@ def run_review(
     logger.info("Running LLM extraction")
     extraction = run_extraction(sandwich_text, venue, version, seed)
 
-    logger.info(
-        "Running ArXiv grounding (%d queries)",
-        len(extraction.get("search_queries", [])),
+    raw_queries = extraction.get("search_queries", [])
+    valid_queries = []
+    if isinstance(raw_queries, list):
+        for item in raw_queries:
+            if not isinstance(item, dict):
+                continue
+            q = item.get("query")
+            if isinstance(q, str) and q.strip():
+                cat = item.get("category")
+                rat = item.get("rationale")
+                valid_queries.append(
+                    {
+                        "query": q.strip(),
+                        "category": cat if isinstance(cat, str) and cat.strip() else "unknown",
+                        "rationale": rat if isinstance(rat, str) and rat.strip() else "auto_filled",
+                    }
+                )
+    if not valid_queries:
+        title = extraction.get("title", "")
+        keywords = extraction.get("keywords", [])
+        keyword_str = " ".join(k for k in keywords[:3] if isinstance(k, str))
+        fallback_query = " ".join(part for part in [title, keyword_str] if part).strip()
+        if fallback_query:
+            valid_queries = [{"query": fallback_query, "category": "fallback", "rationale": "auto_generated"}]
+            logger.warning("Extraction returned no valid search queries; using fallback query: %r", fallback_query)
+    extraction["search_queries"] = valid_queries
+
+    logger.info("Running grounding (%d queries)", len(valid_queries))
+    grounding = run_arxiv_grounding(
+        extraction,
+        cache_dir=cache_dir,
+        no_cache=no_cache,
+        max_results=grounding_max_results,
+        arxiv_timeout_s=grounding_arxiv_timeout_s,
+        arxiv_max_retries=grounding_arxiv_max_retries,
+        openalex_timeout_s=grounding_openalex_timeout_s,
+        openalex_max_retries=grounding_openalex_max_retries,
     )
-    grounding = run_arxiv_grounding(extraction, cache_dir=cache_dir, no_cache=no_cache)
 
     logger.info("Running 3 parallel reviewers")
     reviews = run_reviewers_parallel(
