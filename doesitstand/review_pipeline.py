@@ -11,6 +11,7 @@ from typing import Any
 from doesitstand.arxiv_client import search_cached
 from doesitstand.contracts import validate_artifact
 from doesitstand.llm_client import llm_json_flash, llm_json_pro_with_retry, get_cost_report, reset_cost_tracker
+from doesitstand.openalex_client import search_by_query_cached
 from doesitstand.pdf_extract import (
     extract_pdf_text, get_head_excerpt, get_sandwich_excerpt,
     extract_sections, get_reviewer_text,
@@ -24,6 +25,8 @@ logger = logging.getLogger(__name__)
 _ARXIV_MAX_RESULTS = 10
 _ARXIV_GROUNDING_TIMEOUT_S = 12
 _ARXIV_GROUNDING_MAX_RETRIES = 1
+_OPENALEX_GROUNDING_TIMEOUT_S = 12
+_OPENALEX_GROUNDING_MAX_RETRIES = 1
 
 
 # ---------------------------------------------------------------------------
@@ -115,14 +118,34 @@ def run_arxiv_grounding(
             logger.debug("ArXiv query %r → %d results", query_str, len(results))
         except Exception as exc:
             logger.warning("ArXiv search failed for %r: %s", query_str, exc)
-            queries_run.append(
-                {
-                    "query": query_str,
-                    "category": sq.get("category", ""),
-                    "results": [],
-                    "error": str(exc),
-                }
-            )
+            try:
+                oa_results = search_by_query_cached(
+                    query=query_str,
+                    max_results=max_results,
+                    timeout_s=_OPENALEX_GROUNDING_TIMEOUT_S,
+                    max_retries=_OPENALEX_GROUNDING_MAX_RETRIES,
+                    cache_dir=Path(cache_dir).parent / "openalex_search",
+                    no_cache=no_cache,
+                )
+                queries_run.append(
+                    {
+                        "query": query_str,
+                        "category": sq.get("category", ""),
+                        "results": [r.to_dict() for r in oa_results],
+                        "source": "openalex_fallback",
+                        "error": f"arxiv_failed: {exc}",
+                    }
+                )
+                logger.info("OpenAlex fallback query %r → %d results", query_str, len(oa_results))
+            except Exception as oa_exc:
+                queries_run.append(
+                    {
+                        "query": query_str,
+                        "category": sq.get("category", ""),
+                        "results": [],
+                        "error": f"arxiv_failed: {exc}; openalex_failed: {oa_exc}",
+                    }
+                )
 
     unique_ids: set[str] = set()
     for q in queries_run:

@@ -1,5 +1,6 @@
 """OpenAlex API client for resolving papers by arXiv ID."""
 import json
+import hashlib
 import logging
 import re
 import time
@@ -111,7 +112,8 @@ def fetch_by_arxiv_id_cached(
 ) -> Optional[ArxivEntry]:
     cache_path = Path(cache_dir)
     cache_path.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_path / f"{arxiv_id}.json"
+    key = hashlib.sha256(arxiv_id.encode()).hexdigest()
+    cache_file = cache_path / f"{key}.json"
 
     if not no_cache and cache_file.exists():
         data = json.loads(cache_file.read_text())
@@ -122,3 +124,68 @@ def fetch_by_arxiv_id_cached(
     result = fetch_by_arxiv_id(arxiv_id, timeout_s=timeout_s, max_retries=max_retries)
     cache_file.write_text(json.dumps(result.to_dict() if result else None, indent=2))
     return result
+
+
+def search_by_query(
+    query: str,
+    max_results: int = 10,
+    timeout_s: int = 15,
+    max_retries: int = 2,
+) -> list[ArxivEntry]:
+    """Search OpenAlex works by free-text query and map into ArxivEntry objects."""
+    url = "https://api.openalex.org/works"
+    headers = {"User-Agent": ARXIV_USER_AGENT}
+    params = {"search": query, "per-page": max_results}
+
+    last_exc: Optional[Exception] = None
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=timeout_s)
+            resp.raise_for_status()
+            payload = resp.json()
+            results = payload.get("results", [])
+            return [_oa_to_entry(item) for item in results]
+        except requests.exceptions.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 429:
+                last_exc = exc
+                wait = 2 ** attempt * 3
+                logger.warning("OpenAlex search rate limited (429, attempt %d/%d) — retrying in %ds", attempt + 1, max_retries, wait)
+                time.sleep(wait)
+                continue
+            raise
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+            last_exc = exc
+            if attempt < max_retries - 1:
+                wait = 2 ** attempt * 2
+                logger.warning("OpenAlex search failed (attempt %d/%d): %s", attempt + 1, max_retries, exc)
+                time.sleep(wait)
+    if last_exc is not None:
+        raise last_exc
+    return []
+
+
+def search_by_query_cached(
+    query: str,
+    max_results: int = 10,
+    timeout_s: int = 15,
+    max_retries: int = 2,
+    cache_dir: str | Path = ".cache/openalex_search",
+    no_cache: bool = False,
+) -> list[ArxivEntry]:
+    cache_path = Path(cache_dir)
+    cache_path.mkdir(parents=True, exist_ok=True)
+    key = hashlib.sha256(f"{query}|{max_results}".encode()).hexdigest()
+    cache_file = cache_path / f"{key}.json"
+
+    if not no_cache and cache_file.exists():
+        data = json.loads(cache_file.read_text())
+        return [ArxivEntry(**e) for e in data]
+
+    results = search_by_query(
+        query=query,
+        max_results=max_results,
+        timeout_s=timeout_s,
+        max_retries=max_retries,
+    )
+    cache_file.write_text(json.dumps([e.to_dict() for e in results], indent=2))
+    return results
